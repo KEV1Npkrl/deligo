@@ -1,0 +1,68 @@
+CREATE TABLE IF NOT EXISTS app_user (
+ id VARCHAR(36) PRIMARY KEY, email VARCHAR(160) NOT NULL UNIQUE, full_name VARCHAR(100) NOT NULL,
+ password_hash VARCHAR(100) NOT NULL, user_role VARCHAR(20) NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE,
+ available BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS merchant (
+ id VARCHAR(36) PRIMARY KEY, owner_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL,
+ category VARCHAR(40) NOT NULL, description VARCHAR(300) NOT NULL, image_key VARCHAR(50) NOT NULL,
+ is_open BOOLEAN NOT NULL DEFAULT TRUE, prep_minutes INT NOT NULL DEFAULT 25,
+ FOREIGN KEY (owner_id) REFERENCES app_user(id)
+);
+CREATE TABLE IF NOT EXISTS product (
+ id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL,
+ description VARCHAR(300) NOT NULL, price DECIMAL(12,2) NOT NULL, stock INT NOT NULL,
+ active BOOLEAN NOT NULL DEFAULT TRUE, FOREIGN KEY (merchant_id) REFERENCES merchant(id),
+ CHECK (price > 0), CHECK (stock >= 0)
+);
+CREATE TABLE IF NOT EXISTS zone (
+ id VARCHAR(36) PRIMARY KEY, name VARCHAR(80) NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE,
+ center_lat DOUBLE NOT NULL, center_lng DOUBLE NOT NULL, radius_km DOUBLE NOT NULL,
+ delivery_fee DECIMAL(12,2) NOT NULL, CHECK (delivery_fee >= 0)
+);
+CREATE TABLE IF NOT EXISTS platform_setting (
+ id INT PRIMARY KEY, rain_fee DECIMAL(12,2) NOT NULL DEFAULT 0, CHECK (rain_fee >= 0)
+);
+CREATE TABLE IF NOT EXISTS customer_address (
+ id VARCHAR(36) PRIMARY KEY, customer_id VARCHAR(36) NOT NULL, label VARCHAR(40) NOT NULL,
+ address_text VARCHAR(250) NOT NULL, latitude DOUBLE NOT NULL, longitude DOUBLE NOT NULL,
+ FOREIGN KEY (customer_id) REFERENCES app_user(id)
+);
+CREATE TABLE IF NOT EXISTS delivery_order (
+ id VARCHAR(36) PRIMARY KEY, customer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL,
+ courier_id VARCHAR(36), zone_id VARCHAR(36) NOT NULL, address_text VARCHAR(250) NOT NULL,
+ latitude DOUBLE NOT NULL, longitude DOUBLE NOT NULL, order_status VARCHAR(30) NOT NULL,
+ payment_method VARCHAR(10) NOT NULL, payment_status VARCHAR(30) NOT NULL,
+ payment_reference VARCHAR(80) UNIQUE, subtotal DECIMAL(12,2) NOT NULL,
+ delivery_fee DECIMAL(12,2) NOT NULL, rain_fee DECIMAL(12,2) NOT NULL,
+ tip DECIMAL(12,2) NOT NULL, platform_share DECIMAL(12,2) NOT NULL,
+ courier_share DECIMAL(12,2) NOT NULL, total DECIMAL(12,2) NOT NULL,
+ idempotency_key VARCHAR(80) NOT NULL, request_hash VARCHAR(64) NOT NULL,
+ version INT NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, settled_at TIMESTAMP NULL,
+ cash_rendered_at TIMESTAMP NULL,
+ UNIQUE (customer_id, idempotency_key),
+ FOREIGN KEY (customer_id) REFERENCES app_user(id), FOREIGN KEY (merchant_id) REFERENCES merchant(id),
+ FOREIGN KEY (courier_id) REFERENCES app_user(id), FOREIGN KEY (zone_id) REFERENCES zone(id)
+);
+CREATE TABLE IF NOT EXISTS order_item (
+ id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, product_id VARCHAR(36) NOT NULL,
+ product_name VARCHAR(100) NOT NULL, unit_price DECIMAL(12,2) NOT NULL, quantity INT NOT NULL,
+ FOREIGN KEY (order_id) REFERENCES delivery_order(id), FOREIGN KEY (product_id) REFERENCES product(id),
+ CHECK (quantity > 0)
+);
+CREATE TABLE IF NOT EXISTS order_event (
+ id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, actor_id VARCHAR(36),
+ event_type VARCHAR(50) NOT NULL, detail VARCHAR(500) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (order_id) REFERENCES delivery_order(id)
+);
+CREATE TABLE IF NOT EXISTS review (
+ id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL UNIQUE, customer_id VARCHAR(36) NOT NULL,
+ score INT NOT NULL, comment_text VARCHAR(500) NOT NULL,
+ FOREIGN KEY (order_id) REFERENCES delivery_order(id), CHECK (score BETWEEN 1 AND 4)
+);
+CREATE TABLE IF NOT EXISTS support_case (
+ id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, author_id VARCHAR(36) NOT NULL,
+ subject VARCHAR(500) NOT NULL, case_status VARCHAR(20) NOT NULL DEFAULT 'OPEN', resolution VARCHAR(500),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (order_id) REFERENCES delivery_order(id)
+);

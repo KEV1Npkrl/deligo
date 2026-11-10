@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: deligo
+      MYSQL_USER: deligo
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Define MYSQL_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      DB_URL: jdbc:mysql://mysql:3306/deligo?connectionTimeZone=UTC
+      DB_USER: deligo
+      DB_PASSWORD: ${DB_PASSWORD}
+      DELIGO_DEMO: "true"
+      DELIGO_SEED_PASSWORD: ${DELIGO_SEED_PASSWORD:?Define DELIGO_SEED_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+volumes:
+  mysql-data:

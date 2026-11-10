@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171917" />
+    <meta
+      name="description"
+      content="DeliGo: tus comercios locales, en un solo lugar. Demo académica de delivery multicategoría en Tarapoto."
+    />
+    <title>DeliGo — Cerca de ti.</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Saltar al contenido</a>
+    <div class="demo-banner">
+      DEMO ACADÉMICA · Comercios ficticios · No realices pagos ni compartas
+      datos reales.
+    </div>
+    <header class="header">
+      <div class="header-inner">
+        <a href="#explore" class="brand" aria-label="DeliGo, inicio"
+          >deli<span>go</span><i>↗</i></a
+        >
+        <div class="location">
+          <span class="pin">⌖</span>
+          <div>
+            <small>Tu ciudad</small><strong>Tarapoto y alrededores</strong>
+          </div>
+        </div>
+        <nav aria-label="Navegación principal">
+          <a href="#explore" data-nav="explore">Explorar</a
+          ><a href="#orders" data-nav="orders">Mis pedidos</a
+          ><a href="#workspace" data-nav="workspace" hidden>Mi espacio</a>
+        </nav>
+        <button id="account-button" class="button small secondary">
+          Ingresar <span aria-hidden="true">↗</span>
+        </button>
+        <button id="cart-button" class="cart-button" aria-label="Ver carrito">
+          Bolsa <span id="cart-count">0</span>
+        </button>
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+      <div id="view" class="page">
+        <p class="loading">Cargando comercios…</p>
+      </div>
+    </main>
+    <footer>
+      <a class="brand" href="#explore">deligo<i>↗</i></a>
+      <p>Hecho para conectar lo mejor de tu barrio.</p>
+      <span>Proyecto individual LP3 · Kevin Sanchez · 2026</span
+      ><a
+        href="https://github.com/KEV1Npkrl/deligo"
+        target="_blank"
+        rel="noopener"
+        >Ver proyecto ↗</a
+      >
+    </footer>
+    <dialog id="modal" aria-labelledby="modal-title">
+      <button class="close" id="close-modal" aria-label="Cerrar ventana">
+        ×
+      </button>
+      <div id="modal-body"></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+/target/
+/.idea/
+/.vscode/
+*.iml
+.env
+.env.*
+!.env.example
+/data/
+*.log
+*.jks
+*.p12
+*.pem
+/node_modules/
