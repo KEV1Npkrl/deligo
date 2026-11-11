@@ -30,6 +30,18 @@ const states = {
   DELIVERED: "Entregado",
   CANCELLED: "Cancelado",
 };
+const eventLabels = {
+  ...states,
+  PREPARE: "Preparación aceptada",
+  CLAIM: "Entrega aceptada por el repartidor",
+  CANCEL: "Pedido cancelado",
+  YAPE_SUBMIT: "Referencia Yape registrada",
+  YAPE_VERIFY: "Pago Yape verificado",
+  YAPE_REJECT: "Referencia Yape rechazada",
+  REFUND: "Devolución registrada",
+  RENDER_CASH: "Efectivo rendido",
+  SETTLE: "Liquidación registrada",
+};
 const payments = {
   UNPAID: "Pendiente de pago",
   VERIFYING: "Yape por verificar",
@@ -123,6 +135,7 @@ function art(shop) {
 }
 function nav() {
   const user = state.user;
+  $("#cart-button").hidden = !!user && user.user_role !== "CUSTOMER";
   $("#account-button").textContent = user
     ? user.full_name.split(" ")[0] + " ↗"
     : "Ingresar ↗";
@@ -282,7 +295,10 @@ function orderActions(o) {
         '<button class="button small" data-action="review">Calificar pedido</button>';
   }
   if (role === "MERCHANT") {
-    if (s === "PENDING") a += actionButton("PREPARE", "Aceptar y preparar");
+    if (s === "PENDING" && (o.payment_method === "CASH" || p === "PAID"))
+      a += actionButton("PREPARE", "Aceptar y preparar");
+    else if (s === "PENDING")
+      a += '<p class="hint">La preparación estará disponible cuando administración verifique el pago Yape.</p>';
     if (s === "PREPARING")
       a += actionButton("READY", "Marcar listo para recoger");
     if (["PENDING", "PREPARING"].includes(s))
@@ -311,7 +327,8 @@ function orderActions(o) {
       a += actionButton("REFUND", "Registrar devolución");
     if (s === "DELIVERED" && o.payment_method === "CASH" && !o.cash_rendered_at)
       a += actionButton("RENDER_CASH", "Registrar rendición");
-    if (s === "DELIVERED" && p === "PAID" && !o.settled_at)
+    if (s === "DELIVERED" && p === "PAID" && !o.settled_at &&
+        (o.payment_method !== "CASH" || o.cash_rendered_at))
       a += actionButton("SETTLE", "Registrar liquidación");
     if (["PENDING", "PREPARING"].includes(s))
       a += actionButton("CANCEL", "Cancelar con motivo", "danger");
@@ -324,7 +341,7 @@ function orderActions(o) {
 async function orderPage(id) {
   const o = await api("/orders/" + encodeURIComponent(id));
   state.order = o;
-  return `<a href="#orders" class="back">← Volver a pedidos</a><div class="page-title"><div class="eyebrow">Pedido ${escape(o.id.slice(0, 8).toUpperCase())}</div><h1>${states[o.order_status]}</h1><p>${escape(o.merchant_name)} · ${date(o.created_at)}</p><button class="button secondary small" data-action="refresh">Actualizar estado ↻</button></div><div class="order-detail"><section class="stack"><div class="panel"><h2>El recorrido de tu pedido</h2><ol class="timeline">${o.events.map((e) => `<li><strong>${escape(states[e.event_type] || e.event_type.replaceAll("_", " "))}</strong><p>${escape(e.detail)}</p><small>${date(e.created_at)}</small></li>`).join("")}</ol><div class="actions">${orderActions(o)}</div></div><div class="panel"><h2>Dirección de entrega</h2><p style="font-size:14px">${escape(o.address_text)}</p><p class="muted" style="font-size:12px">${o.latitude}, ${o.longitude}</p><a class="button secondary small" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${encodeURIComponent(o.latitude)}&mlon=${encodeURIComponent(o.longitude)}#map=17/${encodeURIComponent(o.latitude)}/${encodeURIComponent(o.longitude)}">Ver punto en OpenStreetMap ↗</a><p class="muted" style="font-size:11px;margin-top:15px">Ubicación de entrega, no seguimiento GPS del repartidor.</p></div></section><aside class="stack"><div class="panel"><h2>Tu pedido</h2>${o.items.map((p) => `<div class="money-line"><span>${p.quantity} × ${escape(p.product_name)}</span><strong>${money(p.unit_price * p.quantity)}</strong></div>`).join("")}<div class="money-line"><span>Delivery</span><span>${money(o.delivery_fee)}</span></div>${Number(o.rain_fee) ? `<div class="money-line"><span>Adicional por lluvia</span><span>${money(o.rain_fee)}</span></div>` : ""}<div class="money-line"><span>Propina</span><span>${money(o.tip)}</span></div><div class="money-line total"><span>Total</span><span>${money(o.total)}</span></div><span class="badge pay">${payments[o.payment_status]}</span><p class="muted" style="font-size:11px;margin-top:12px">${o.payment_method === "YAPE" ? "Yape centralizado en DeliGo" : "Efectivo contraentrega"}${o.payment_reference ? " · " + escape(o.payment_reference) : ""}</p>${state.user.user_role === "ADMIN" || state.user.user_role === "COURIER" ? `<div class="hint">Comercio: ${money(o.subtotal)}<br>Repartidor (incluye propina): ${money(o.courier_share)}<br>DeliGo: ${money(o.platform_share)}<br>Liquidación: ${o.settled_at ? date(o.settled_at) : "Pendiente"}</div>` : ""}</div>${o.review.length ? `<div class="panel"><h3>Tu calificación</h3><p>${["", "Malo", "Regular", "Bueno", "Excelente"][o.review[0].score]}</p><p class="muted">${escape(o.review[0].comment_text)}</p></div>` : ""}</aside></div>`;
+  return `<a href="#orders" class="back">← Volver a pedidos</a><div class="page-title"><div class="eyebrow">Pedido ${escape(o.id.slice(0, 8).toUpperCase())}</div><h1>${states[o.order_status]}</h1><p>${escape(o.merchant_name)} · ${date(o.created_at)}</p><button class="button secondary small" data-action="refresh">Actualizar estado ↻</button></div><div class="order-detail"><section class="stack"><div class="panel"><h2>El recorrido de tu pedido</h2><ol class="timeline">${o.events.map((e) => `<li><strong>${escape(eventLabels[e.event_type] || "Actividad del pedido")}</strong><p>${escape(e.detail)}</p><small>${date(e.created_at)}</small></li>`).join("")}</ol><div class="actions">${orderActions(o)}</div></div><div class="panel"><h2>Dirección de entrega</h2><p style="font-size:14px">${escape(o.address_text)}</p><p class="muted" style="font-size:12px">${o.latitude}, ${o.longitude}</p><a class="button secondary small" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${encodeURIComponent(o.latitude)}&mlon=${encodeURIComponent(o.longitude)}#map=17/${encodeURIComponent(o.latitude)}/${encodeURIComponent(o.longitude)}">Ver punto en OpenStreetMap ↗</a><p class="muted" style="font-size:11px;margin-top:15px">Ubicación de entrega, no seguimiento GPS del repartidor.</p></div></section><aside class="stack"><div class="panel"><h2>Tu pedido</h2>${o.items.map((p) => `<div class="money-line"><span>${p.quantity} × ${escape(p.product_name)}</span><strong>${money(p.unit_price * p.quantity)}</strong></div>`).join("")}<div class="money-line"><span>Delivery</span><span>${money(o.delivery_fee)}</span></div>${Number(o.rain_fee) ? `<div class="money-line"><span>Adicional por lluvia</span><span>${money(o.rain_fee)}</span></div>` : ""}<div class="money-line"><span>Propina</span><span>${money(o.tip)}</span></div><div class="money-line total"><span>Total</span><span>${money(o.total)}</span></div><span class="badge pay">${payments[o.payment_status]}</span><p class="muted" style="font-size:11px;margin-top:12px">${o.payment_method === "YAPE" ? "Yape centralizado en DeliGo" : "Efectivo contraentrega"}${o.payment_reference ? " · " + escape(o.payment_reference) : ""}</p>${state.user.user_role === "ADMIN" || state.user.user_role === "COURIER" ? `<div class="hint">Comercio: ${money(o.subtotal)}<br>Repartidor (incluye propina): ${money(o.courier_share)}<br>DeliGo: ${money(o.platform_share)}<br>Liquidación: ${o.settled_at ? date(o.settled_at) : "Pendiente"}</div>` : ""}</div>${o.review.length ? `<div class="panel"><h3>Tu calificación</h3><p>${["", "Malo", "Regular", "Bueno", "Excelente"][o.review[0].score]}</p><p class="muted">${escape(o.review[0].comment_text)}</p></div>` : ""}</aside></div>`;
 }
 async function workspacePage() {
   if (!state.user) return ordersPage();

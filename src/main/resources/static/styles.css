@@ -1,9 +1,21 @@
+@font-face {
+  font-family: Inter;
+  src: url('/assets/fonts/inter.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: Montserrat;
+  src: url('/assets/fonts/montserrat.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
 :root {
-  --ink: #171917;
-  --muted: #71756e;
+  --ink: #040404;
+  --muted: #696969;
   --line: #e6e8e1;
   --paper: #fff;
-  --canvas: #f8f9f5;
+  --canvas: #f2f2f1;
   --lime: #d8f36a;
   --radius: 20px;
   --shadow: 0 20px 70px #17221016;
@@ -68,6 +80,9 @@ h1 {
   line-height: 1.04;
   letter-spacing: -0.065em;
   font-weight: 650;
+}
+h1, h2, h3, .button {
+  font-family: Montserrat, "Segoe UI", sans-serif;
 }
 h2 {
   font-size: 1.65rem;
@@ -669,7 +684,9 @@ small,
   font-weight: 750;
   font-size: 17px;
   border-top: 1px solid var(--line);
-  padding-top: 16px;
+  padding: 12px;
+  background: var(--canvas);
+  border-radius: 5px;
 }
 .field {
   display: grid;
@@ -744,7 +761,7 @@ small,
 .panel {
   border: 1px solid var(--line);
   background: white;
-  border-radius: 20px;
+  border-radius: 10px;
   padding: 24px;
 }
 .order-card h3 {

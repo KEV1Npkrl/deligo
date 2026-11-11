@@ -1,4 +1,4 @@
-# Verificación — 10 de noviembre de 2026
+# Verificación — actualizada el 11 de noviembre de 2026
 
 ## Evidencia obtenida
 
@@ -15,9 +15,17 @@ Conservación de importes y propina; snapshots; idempotencia y claves reutilizad
 ## Qué NO se ha verificado
 
 - No hay prueba de carga ni garantía de rendimiento/alta disponibilidad.
-- La vista previa de navegador quedó bloqueada por aislamiento de procesos y permisos de red del entorno. No se certifica todavía el recorrido visual end-to-end ni ausencia de problemas en todos los breakpoints.
+- Queda pendiente el recorrido visual completo de Yape/cancelación/devolución, aunque sus reglas sí están cubiertas por las pruebas de integración.
 - Docker Compose y la imagen de contenedor están preparados, pero Docker Desktop no estuvo operativo; no se declara prueba de contenedor exitosa.
-- La integración Figma devolvió reiteradamente un problema de autorización. No se certifica fidelidad a tipografía/componentes originales.
+- Se recuperó el acceso a Figma y se extrajeron los fundamentos de Cart (164:4765). La adaptación completa de pantallas y assets sigue pendiente.
 - No se ejecutaron operaciones bancarias, envío de correo/SMS, SUNAT, GPS real ni despliegue cloud.
 
 Los resultados se refieren a esta versión, no al cumplimiento completo de los requisitos originales. El workflow de CI se comprobará por separado después de publicar.
+
+## Verificación visual y funcional en navegador
+
+Se completó un pedido ficticio de efectivo desde la interfaz, pasando por cliente, comercio, repartidor y administración: creación, preparación, listo, asignación, ruta, recogida, entrega/cobro, rendición y liquidación. Total S/24: comercio S/18, repartidor S/5.10 y DeliGo S/0.90. El pedido persistió tras reiniciar la aplicación.
+
+Se verificó después del reinicio el historial en español, la ocultación del carrito en administración y la tipografía Montserrat. El detalle del pedido se comprobó a 360, 390, 768 y 1440 px sin desbordamiento horizontal; revisión visual de móvil y escritorio. Inicio revisado a 360 y 390 px. Esto no equivale a una revisión de todas las pantallas.
+
+Se corrigió la disponibilidad visual de las acciones: el comercio espera verificación de Yape antes de preparar, y administración espera la rendición de efectivo antes de liquidar. El servidor ya aplicaba estas restricciones; no se modificaron sus reglas.

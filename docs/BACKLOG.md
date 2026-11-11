@@ -9,7 +9,7 @@ No confundir este backlog con funcionalidades ya implementadas. La versión 0.1 
 | Implementado | Entrega manual | Un pedido activo por repartidor; dos aceptaciones concurrentes no crean dos asignaciones. |
 | Implementado | Pagos manuales de demo | Yape declarado requiere verificación; efectivo requiere cobro y rendición; cancelado pagado requiere devolución. |
 | Implementado | Operación mínima | CRUD de productos, apertura, calificación, tres direcciones, soporte y totales. |
-| Pendiente de acceso | Adaptación exacta de Figma | Extraer estilos/assets por integración, atribuir licencia y comparar pantallas a 360/390/768/1440 px. |
+| En curso | Adaptación de Figma | Acceso recuperado; fuentes y fundamentos de Cart aplicados. Falta adaptación completa de pantallas/assets. Detalle de pedido revisado a 360/390/768/1440 px. |
 | Pendiente | Identidad completa | Segundo factor real por correo/autenticador, recuperación con tokens de un uso, revocación, rate limiting y tests de abuso. |
 | Pendiente | Despacho por ofertas | Ubicación reciente, ranking por cercanía, oferta exclusiva 20 s, expiración, rechazo, timeout global y reasignación antes de recogida. |
 | Pendiente | Automatismos | Cancelación de pendientes vencidos con reloj inyectable, liberación de stock y creación de devolución según cobro. |

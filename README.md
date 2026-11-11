@@ -116,7 +116,7 @@ La suite borra pedidos de esa base entre casos; nunca apuntarla a datos de uso r
 
 Referencia solicitada: [Food Delivery App Design — FREE](https://www.figma.com/community/file/1364162990537420776/food-delivery-app-design-free). [Archivo de referencia](https://www.figma.com/design/7cyOJmbNQqn7Nsv7cu3SAy/Food-Delivery-App-Design---FREE--Community-?node-id=212-9000).
 
-El archivo se inspeccionó visualmente en navegador; la integración no entregó sus propiedades por un error de autorización repetido. La interfaz actual es **provisional y original**, con monogramas y una ilustración CSS; no incluye fotografías ni fuentes exportadas de Figma y no se presenta como reproducción fiel. La adaptación exacta y revisión visual de todos los tamaños siguen pendientes.
+Se recuperó el acceso a la integración y se extrajo la pantalla Cart (164:4765). Se aplicaron Montserrat e Inter (archivos locales con licencia SIL OFL), colores y fundamentos de tarjetas y totales. La interfaz sigue siendo una adaptación inicial, con monogramas e ilustración CSS originales: no se presenta como reproducción fiel de todas las pantallas. El recorrido de efectivo se verificó en navegador; el detalle de pedido se revisó a 360, 390, 768 y 1440 px. Ver [diseño y pendientes](docs/DISENO-FIGMA.md).
 
 Pendiente antes de declarar completa la especificación: 2FA y recuperación, ofertas automáticas de 20 segundos, cancelación automática por tiempo, GPS/push, roles dinámicos, postulaciones/documentos, autopedidos, membresías/publicidad, libro contable completo, liquidaciones por lotes, reportes temporales, mantenimiento completo de ciudades/zonas, cumplimiento operativo y despliegue cloud. Ver [backlog](docs/BACKLOG.md).
 
