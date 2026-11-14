@@ -37,7 +37,7 @@ public final class LlamafoodCatalogScraper {
     static final String SITE = "https://order.llamafood.com/";
     static final String API = "https://customer.llama-apis.com/customer";
     static final String DELIVERY = "lld_serve_type_delivery";
-    private static final Pattern SAFE_PAGE_NAME = Pattern.compile("[A-Za-z0-9_-]{1,100}");
+    private static final Pattern SAFE_PAGE_NAME = Pattern.compile("[A-Za-z0-9_.%-]{1,160}");
     private static final Pattern VALID_UNTIL = Pattern.compile(
         "(?i)(?:v[áa]lid[ao]|vigente)[^.]{0,80}?hasta(?: el)?\\s+(\\d{1,2}/\\d{1,2}/\\d{4})"
     );
@@ -54,12 +54,25 @@ public final class LlamafoodCatalogScraper {
             );
         }
         String pageName = validatePageName(args[0]);
-        Instant capturedAt = Instant.now();
         Path output = args.length == 2
             ? Path.of(args[1])
             : Path.of("data", "imports", "llamafood",
                 pageName + "-" + LocalDate.now(PERU_TIME) + ".json");
 
+        Map<String,Object> normalized=capture(pageName,output);
+
+        Map<String, Object> summary = map(normalized.get("summary"));
+        System.out.printf(
+            Locale.ROOT,
+            "Catálogo guardado en %s: %s categorías, %s productos, %s advertencias.%n",
+            output.toAbsolutePath(), summary.get("categories"), summary.get("products"),
+            summary.get("warnings")
+        );
+    }
+
+    public static Map<String,Object> capture(String requestedPageName,Path output) throws Exception {
+        String pageName=validatePageName(requestedPageName);
+        Instant capturedAt = Instant.now();
         URI branchUri = URI.create(API + "/v1/llamafood_branches/" + pageName);
         Map<String, Object> branchResponse = fetchJson(branchUri, pageName);
         Map<String, Object> branch = map(branchResponse.get("branch"));
@@ -75,13 +88,7 @@ public final class LlamafoodCatalogScraper {
         if (parent != null) Files.createDirectories(parent);
         JSON.writerWithDefaultPrettyPrinter().writeValue(output.toFile(), normalized);
 
-        Map<String, Object> summary = map(normalized.get("summary"));
-        System.out.printf(
-            Locale.ROOT,
-            "Catálogo guardado en %s: %s categorías, %s productos, %s advertencias.%n",
-            output.toAbsolutePath(), summary.get("categories"), summary.get("products"),
-            summary.get("warnings")
-        );
+        return normalized;
     }
 
     static Map<String, Object> normalize(

@@ -10,7 +10,7 @@ Proyecto individual de **Kevin Sanchez — [KEV1Npkrl](https://github.com/KEV1Np
 
 - Explorar seis comercios de restaurantes, minimarket, panadería, cuidado personal y flores; filtrar categorías y ordenar por preparación o calificación.
 - Crear una cuenta de cliente e iniciar/cerrar sesión mediante Spring Security, contraseña BCrypt, cookie HttpOnly y protección CSRF.
-- Añadir productos a una bolsa por comercio, revisar delivery/lluvia/propina, comprobar cobertura geográfica y confirmar un pedido.
+- Añadir productos a una bolsa por comercio, elegir variantes y extras obligatorios/opcionales, revisar delivery/lluvia/propina, comprobar cobertura geográfica y confirmar un pedido.
 - Reservar stock dentro de una transacción, evitar duplicados por reintentos y conservar precios históricos. Rechazar cambios de precio no revisados por el cliente.
 - Gestionar catálogo, disponibilidad del comercio y preparación desde el rol comercio.
 - Aceptar una entrega, impedir dobles asignaciones y recorrer sus estados desde el rol repartidor.
@@ -96,7 +96,7 @@ Web HTML/CSS/JS → controladores REST → servicios transaccionales → Store/J
 
 Monolito organizado por `identity`, `catalog`, `orders`, `operations` y `shared`. Se eligió JDBC explícito para mostrar SQL, restricciones y bloqueos en la sustentación; no se afirma usar JPA. Sesión del mismo origen y CSRF, sin tokens persistidos en localStorage. `Pricing` es una política pura; `OrderService` concentra las transiciones y la unidad transaccional.
 
-El esquema inicial está en `src/main/resources/db/schema.sql`. Es idempotente para instalaciones nuevas (`CREATE TABLE IF NOT EXISTS`); **no es un sistema de migraciones evolutivas**. Incorporar Flyway antes de modificar una base con datos persistentes.
+El esquema inicial está en `src/main/resources/db/schema.sql`. Las columnas nuevas del catálogo incluyen compatibilidad idempotente para la base de demo; **no sustituye un sistema de migraciones evolutivas**. Incorporar Flyway antes de una operación real.
 
 ## Pruebas
 
@@ -112,7 +112,7 @@ mvn test -Dspring.datasource.url=jdbc:mysql://localhost:3306/deligo_test -Dsprin
 
 La suite borra pedidos de esa base entre casos; nunca apuntarla a datos de uso real. Las credenciales del comando son de ejemplo: en CI usar variables/secretos del entorno. Se comprueban conservación de importes, snapshots, idempotencia, concurrencia, stock, cobertura, propiedad, estados, cobros, rendiciones y seguridad HTTP real.
 
-## Capturar un catálogo público de referencia
+## Capturar catálogos públicos de referencia
 
 El proyecto incluye un extractor Java para estudiar catálogos públicos sin iniciar sesión ni consultar pedidos. Por ejemplo, para Bembos Tarapoto:
 
@@ -122,7 +122,20 @@ mvn -q -DskipTests exec:java -Dexec.mainClass=pe.deligo.catalog.importer.Llamafo
 
 Realiza dos consultas: identifica la sucursal por su nombre de página y obtiene su menú de delivery. La instantánea normalizada se guarda en `data/imports/llamafood/`, directorio excluido de Git. Contiene procedencia y fecha, comercio, categorías, productos, precios publicados, disponibilidad, variantes y advertencias de vigencia encontradas en las descripciones.
 
-La captura es una entrada de revisión, no una importación automática a MySQL. Los precios pueden cambiar y la fuente puede conservar textos desactualizados. DeliGo no presenta estos comercios como afiliados propios ni descarga sus imágenes al repositorio. Ver [política y formato de catálogos](docs/CATALOGOS-REFERENCIA.md).
+La lista de negocios disponibles de Llamafood depende de una dirección guardada. Para una captura completa de lo que esa dirección ve en Tarapoto:
+
+1. En la sesión propia de Llamafood, abrir las herramientas del navegador → **Red/Network**, recargar la página de restaurantes y guardar **solo la respuesta JSON** de la petición cuyo nombre contiene `available_llamafood_delivery_branches`. No exportar cookies, cabeceras, HAR, contraseña ni token.
+2. Ejecutar:
+
+```sh
+mvn -q -DskipTests exec:java -Dexec.mainClass=pe.deligo.catalog.importer.LlamafoodBulkCatalogScraper -Dexec.args="C:/ruta/respuesta-lista.json"
+```
+
+El extractor encuentra todos los negocios de esa respuesta, descarta coordenadas fuera de un radio de 30 km del centro de Tarapoto y captura cada catálogo público con una pausa moderada. Genera un `manifest.json` con éxitos y fallos. Puede repetirse con las demás categorías/tipos de negocio y reunir los resultados bajo `data/imports/llamafood/`.
+
+En perfil demo, DeliGo importa automáticamente las instantáneas normalizadas presentes en esa carpeta. En cualquier perfil, un administrador puede enviar una instantánea revisada a `POST /api/admin/catalog/import`. La importación actualiza por identificadores externos sin duplicar comercios, categorías, productos ni opciones; las promociones cuya propia descripción indica una fecha vencida se mantienen ocultas.
+
+Los precios pueden cambiar y una dirección no garantiza cobertura de toda la ciudad: “todos” significa todos los negocios devueltos para ese punto de entrega y categoría en el momento de captura. Para mejorar cobertura se comparan varias direcciones ficticias de Tarapoto, Morales y La Banda, deduplicando por `branch_id`. DeliGo no presenta estos comercios como afiliados propios ni descarga sus imágenes al repositorio. Ver [política y formato de catálogos](docs/CATALOGOS-REFERENCIA.md).
 
 ## Estado del diseño y límites actuales
 

@@ -132,6 +132,7 @@ function empty(title, body) {
   return `<div class="empty"><h2>${title}</h2><p>${body}</p><a class="button" href="#explore">Explorar comercios ↗</a></div>`;
 }
 function art(shop) {
+  if(shop.cover_url||shop.logo_url) return `<div class="shop-art remote"><img src="${escape(shop.cover_url||shop.logo_url)}" alt="${escape(shop.name)}" loading="lazy"><span class="shop-tag">${shop.is_open ? "Abierto ahora" : "Cerrado"}</span></div>`;
   return `<div class="shop-art ${escape(shop.image_key)}" aria-hidden="true"><span class="monogram">${initials[shop.image_key] || "dg"}</span><span class="art-sub">${escape(shop.category)} · Tarapoto</span><span class="shop-tag">${shop.is_open ? "Abierto ahora" : "Cerrado"}</span></div>`;
 }
 function nav() {
@@ -197,13 +198,15 @@ function categoryArt(c) {
  return photos[c]?`<img src="/assets/figma/${photos[c]}" alt="" loading="lazy">`:`<span class="category-symbol" aria-hidden="true">${symbols[c]||'◎'}</span>`;
 }
 function productArt(p) {
+  if (p.image_url || p.thumbnail_url) return `<img class="product-photo" src="${escape(p.image_url || p.thumbnail_url)}" alt="${escape(p.name)}" loading="lazy">`;
  const photo = ['classic','double'].includes(p.id) ? '203-4234-imgBurger.png' : null;
  return photo ? `<img class="product-photo" src="/assets/figma/${photo}" alt="Imagen referencial de hamburguesa" loading="lazy">` : `<span class="product-placeholder" aria-hidden="true">${escape(p.name.split(' ').slice(0,2).map(w=>w[0]).join(''))}</span>`;
 }
 function productDetail(id) {
  const p=state.products.find(p=>p.id===id); if(!p)return;
  const shop=state.shops.find(s=>s.id===p.merchant_id);
- modal(p.name,`<div class="product-detail-art">${productArt(p)}</div><p class="detail-description">${escape(p.description)}</p><div class="detail-meta"><span>${escape(shop.name)}</span><span>${shop.prep_minutes} min preparación</span></div><div class="detail-purchase"><strong>${money(p.price)}</strong><button class="button" data-action="add" data-id="${p.id}" ${!shop.is_open||!p.stock?'disabled':''}>Agregar a mi bolsa</button></div><p class="muted">${p.stock} unidades disponibles.</p>`);
+  const groups=(p.option_groups||[]).map(g=>`<fieldset class="option-group" data-group="${g.id}" data-min="${g.min_selected}" data-max="${g.max_selected}"><legend>${escape(g.name)} <small>${g.min_selected===g.max_selected&&g.min_selected>0?`Elige ${g.min_selected}`:g.min_selected?`Entre ${g.min_selected} y ${g.max_selected}`:`Hasta ${g.max_selected}`}</small></legend>${g.options.map(o=>`<label class="option-choice"><input type="${g.max_selected===1?'radio':'checkbox'}" name="group-${g.id}" value="${o.id}" data-price="${o.additional_price}"><span>${escape(o.name)}</span><strong>${Number(o.additional_price)?`+ ${money(o.additional_price)}`:'Incluido'}</strong></label>`).join('')}</fieldset>`).join('');
+  modal(p.name,`<form id="configure-product" data-id="${p.id}"><div class="product-detail-art">${productArt(p)}</div><p class="detail-description">${escape(p.description)}</p><div class="detail-meta"><span>${escape(shop.name)}</span><span>${shop.prep_minutes} min preparación</span></div>${groups}<p class="error-text" id="configure-error"></p><div class="detail-purchase"><strong>${money(p.price)}</strong><button class="button" type="submit" ${!shop.is_open||!p.stock?'disabled':''}>Agregar a mi bolsa</button></div><p class="muted">${p.stock} unidades disponibles.</p></form>`);
 }
 
 function merchantCards() {
@@ -225,7 +228,7 @@ function merchantCards() {
     ? shops
         .map(
           (s) =>
-            `<a class="merchant-card" href="#merchant/${s.id}">${s.id === "burger" ? '<div class="shop-photo"><img src="/assets/figma/136-2305-imgFrame91.png" alt="Hamburguesa referencial del comercio" loading="lazy"></div>' : art(s)}<div class="card-body"><h3>${escape(s.name)}</h3><p>${escape(s.description)}</p><div class="card-meta"><span>◷ ${s.prep_minutes} min preparación</span><strong>${s.rating ? "★ " + Number(s.rating).toFixed(1) + "/4" : "Nuevo en DeliGo"}</strong></div></div></a>`,
+            `<a class="merchant-card" href="#merchant/${s.id}">${s.id === "burger" ? '<div class="shop-photo"><img src="/assets/figma/136-2305-imgFrame91.png" alt="Hamburguesa referencial del comercio" loading="lazy"></div>' : art(s)}<div class="card-body"><h3>${escape(s.name)}</h3>${s.source_provider?`<span class="source-label">Catálogo público de referencia · ${escape(s.source_provider)}</span>`:''}<p>${escape(s.description)}</p><div class="card-meta"><span>◷ ${s.prep_minutes} min preparación</span><strong>${s.rating ? "★ " + Number(s.rating).toFixed(1) + "/4" : "Nuevo en DeliGo"}</strong></div></div></a>`,
         )
         .join("")
     : empty(
@@ -239,11 +242,13 @@ async function shopPage(id) {
   state.products = await api(
     "/catalog/products?merchantId=" + encodeURIComponent(id),
   );
-  return `<a href="#explore" class="back">← Todos los comercios</a><section class="shop-header">${art(shop)}<div><div class="eyebrow">${escape(shop.category)}</div><h1>${escape(shop.name)}</h1><p>${escape(shop.description)}<br>Preparación estimada: ${shop.prep_minutes} minutos · Delivery desde ${money(5)}</p></div></section><div class="catalog-layout"><section><div class="section-head"><h2>Elige lo que te gusta</h2><span class="muted">${state.products.length} productos</span></div><div class="product-list">${state.products.map((p) => `<article class="product"><button class="product-visual" data-action="product-detail" data-id="${p.id}" aria-label="Ver ${escape(p.name)}">${productArt(p)}</button><div><h3><button class="product-title" data-action="product-detail" data-id="${p.id}">${escape(p.name)}</button></h3><p>${escape(p.description)}</p><span class="price">${money(p.price)}</span> <small>· ${p.stock} disponibles</small></div><button class="add" data-action="add" data-id="${p.id}" aria-label="Agregar ${escape(p.name)}" ${!shop.is_open || !p.stock ? "disabled" : ""}>+</button></article>`).join("") || empty("Catálogo en preparación", "Este comercio aún no tiene productos disponibles.")}</div></section><aside class="cart-panel" id="inline-cart">${cartContent()}</aside></div>`;
+  return `<a href="#explore" class="back">← Todos los comercios</a><section class="shop-header">${art(shop)}<div><div class="eyebrow">${escape(shop.category)}</div><h1>${escape(shop.name)}</h1>${shop.source_provider?`<span class="source-label">Referencia académica basada en catálogo público de ${escape(shop.source_provider)} · sin afiliación</span>`:''}<p>${escape(shop.description)}<br>Preparación estimada: ${shop.prep_minutes} minutos · Tarifa DeliGo calculada según zona</p></div></section><div class="catalog-layout"><section><div class="section-head"><h2>Elige lo que te gusta</h2><span class="muted">${state.products.length} productos</span></div><div class="product-list">${state.products.map((p) => `<article class="product"><button class="product-visual" data-action="product-detail" data-id="${p.id}" aria-label="Ver ${escape(p.name)}">${productArt(p)}</button><div><h3><button class="product-title" data-action="product-detail" data-id="${p.id}">${escape(p.name)}</button></h3><p>${escape(p.description)}</p><span class="price">${money(p.price)}</span>${Number(p.original_price)>Number(p.price)?` <small><s>${money(p.original_price)}</s></small>`:''} <small>· ${p.stock} disponibles</small></div><button class="add" data-action="add" data-id="${p.id}" aria-label="Agregar ${escape(p.name)}" ${!shop.is_open || !p.stock ? "disabled" : ""}>+</button></article>`).join("") || empty("Catálogo en preparación", "Este comercio aún no tiene productos disponibles.")}</div></section><aside class="cart-panel" id="inline-cart">${cartContent()}</aside></div>`;
 }
+function linePrice(p){ return Number(p.price)+((p.selectedOptions||[]).reduce((n,o)=>n+Number(o.additional_price)*Number(o.quantity||1),0)); }
+function optionSummary(p){ return (p.selectedOptions||[]).length?`<small>${p.selectedOptions.map(o=>escape(o.name)).join(' · ')}</small>`:''; }
 function cartContent() {
-  let subtotal = state.cart.reduce((s, p) => s + p.price * p.quantity, 0);
-  return `<h2>Tu bolsa <span class="muted">(${state.cart.reduce((s, p) => s + p.quantity, 0)})</span></h2>${state.cart.length ? `<p class="muted" style="font-size:12px">${escape(state.shops.find((s) => s.id === state.cartShop)?.name)}</p>${state.cart.map((p) => `<div class="cart-item"><div class="cart-product-art">${productArt(p)}</div><div><strong>${escape(p.name)}</strong><span>${money(p.price * p.quantity)}</span></div><span class="qty"><button data-action="minus" data-id="${p.id}" aria-label="Quitar una unidad de ${escape(p.name)}">−</button>${p.quantity}<button data-action="plus" data-id="${p.id}" aria-label="Agregar una unidad de ${escape(p.name)}">+</button></span></div>`).join("")}<div class="money-line total"><span>Productos</span><span>${money(subtotal)}</span></div><p class="muted" style="font-size:11px;line-height:1.7">El delivery y cualquier adicional se muestran antes de confirmar.</p><button class="button full" data-action="checkout">Continuar ↗</button><button class="link-button" data-action="clear-cart">Vaciar bolsa</button>` : '<p class="muted" style="font-size:13px;line-height:1.8;padding:20px 0">Tu próximo favorito te espera.<br>Agrega un producto para empezar.</p>'}`;
+  let subtotal = state.cart.reduce((s, p) => s + linePrice(p) * p.quantity, 0);
+  return `<h2>Tu bolsa <span class="muted">(${state.cart.reduce((s, p) => s + p.quantity, 0)})</span></h2>${state.cart.length ? `<p class="muted" style="font-size:12px">${escape(state.shops.find((s) => s.id === state.cartShop)?.name)}</p>${state.cart.map((p) => `<div class="cart-item"><div class="cart-product-art">${productArt(p)}</div><div><strong>${escape(p.name)}</strong>${optionSummary(p)}<span>${money(linePrice(p) * p.quantity)}</span></div><span class="qty"><button data-action="minus" data-id="${p.cartKey}" aria-label="Quitar una unidad de ${escape(p.name)}">−</button>${p.quantity}<button data-action="plus" data-id="${p.cartKey}" aria-label="Agregar una unidad de ${escape(p.name)}">+</button></span></div>`).join("")}<div class="money-line total"><span>Productos</span><span>${money(subtotal)}</span></div><p class="muted" style="font-size:11px;line-height:1.7">El delivery y cualquier adicional se muestran antes de confirmar.</p><button class="button full" data-action="checkout">Continuar ↗</button><button class="link-button" data-action="clear-cart">Vaciar bolsa</button>` : '<p class="muted" style="font-size:13px;line-height:1.8;padding:20px 0">Tu próximo favorito te espera.<br>Agrega un producto para empezar.</p>'}`;
 }
 function updateCart() {
   state.submitKey = crypto.randomUUID();
@@ -253,9 +258,10 @@ function updateCart() {
     $("#modal-body").innerHTML =
       `<h2 id="modal-title">Tu pedido</h2><div data-cart-modal>${cartContent()}</div>`;
 }
-function addProduct(id) {
+function addProduct(id, selectedOptions=[]) {
   const p = state.products.find((x) => x.id === id);
   if (!p) return;
+  if ((p.option_groups||[]).length && !selectedOptions.length) return productDetail(id);
   if (state.cartShop && state.cartShop !== p.merchant_id && state.cart.length) {
     modal(
       "Un comercio por pedido",
@@ -264,12 +270,13 @@ function addProduct(id) {
     return;
   }
   state.cartShop = p.merchant_id;
-  const old = state.cart.find((x) => x.id === id);
+  const cartKey=id+":"+selectedOptions.map(o=>o.id).sort().join(',');
+  const old = state.cart.find((x) => x.cartKey === cartKey);
   if (old) {
     if (old.quantity >= Math.min(p.stock, 50))
       return toast("Llegaste al stock disponible.");
     old.quantity++;
-  } else state.cart.push({ ...p, quantity: 1 });
+  } else state.cart.push({ ...p, selectedOptions, cartKey, quantity: 1 });
   updateCart();
   toast("Agregado a tu bolsa.");
 }
@@ -280,10 +287,10 @@ async function checkoutPage() {
     return `<div class="page-title"><h1>Tu pedido está casi listo.</h1><p>Ingresa con una cuenta de cliente para confirmar.</p><button class="button" data-action="login">Ingresar</button></div>`;
   const addresses = await api("/addresses");
   const z = state.zones[0];
-  return `<a href="#merchant/${state.cartShop}" class="back">← Volver al comercio</a><div class="page-title"><h1>¿A dónde lo llevamos?</h1><p>Revisa tu dirección y el total antes de confirmar.</p></div><form id="checkout-form" class="catalog-layout"><div class="panel"><h2>Datos de entrega</h2>${addresses.length ? `<label class="field">Direcciones guardadas<select id="saved-address"><option value="">Ingresar otra dirección</option>${addresses.map((a) => `<option value="${a.id}" data-address="${escape(a.address_text)}" data-lat="${a.latitude}" data-lng="${a.longitude}">${escape(a.label)} — ${escape(a.address_text)}</option>`).join("")}</select></label>` : ""}<label class="field">Zona de entrega<select name="zoneId" id="zone">${state.zones.map((z) => `<option value="${z.id}">${escape(z.name)} · ${money(z.delivery_fee)}</option>`).join("")}</select></label>${field("Dirección y referencia", "address", "", "text", 'required minlength="8" maxlength="250" placeholder="Calle, número y referencia (datos ficticios)"')}<div class="field-grid">${field("Latitud del punto", "latitude", z.center_lat, "number", 'required step="any" min="-90" max="90"')}${field("Longitud del punto", "longitude", z.center_lng, "number", 'required step="any" min="-180" max="180"')}</div><p class="hint">Punto de demostración: centro de la zona seleccionada. Puedes ajustar las coordenadas. El servidor valida que el punto esté dentro de cobertura.</p><label class="check"><input name="saveAddress" type="checkbox">Guardar esta dirección (máximo tres)</label><h2 style="margin-top:30px">Método de pago</h2><label class="field">Elige cómo pagar<select name="paymentMethod"><option value="CASH">Efectivo contraentrega</option><option value="YAPE">Yape a DeliGo · verificación manual</option></select></label><p class="hint warning">Esta demo no recibe dinero. En Yape registrarás una referencia ficticia y administración simulará su conciliación. No se muestran cuentas de cobro reales.</p>${field("Propina para tu repartidor (opcional)", "tip", 0, "number", 'id="tip" min="0" max="100" step="0.10" required')}<label class="check"><input name="confirmed" type="checkbox" required>Confirmo que la dirección y el punto de entrega son correctos.</label><p class="error-text" id="checkout-error"></p></div><aside class="cart-panel"><h2>Resumen del pedido</h2>${state.cart.map((p) => `<div class="money-line"><span>${p.quantity} × ${escape(p.name)}</span><strong>${money(p.price * p.quantity)}</strong></div>`).join("")}<div id="checkout-totals">${checkoutTotals(z, 0)}</div><button class="button full" type="submit">Confirmar pedido ↗</button><p class="muted" style="font-size:11px;line-height:1.7;margin-top:15px">El servidor revalida stock, cobertura y precios al confirmar.</p></aside></form>`;
+  return `<a href="#merchant/${state.cartShop}" class="back">← Volver al comercio</a><div class="page-title"><h1>¿A dónde lo llevamos?</h1><p>Revisa tu dirección y el total antes de confirmar.</p></div><form id="checkout-form" class="catalog-layout"><div class="panel"><h2>Datos de entrega</h2>${addresses.length ? `<label class="field">Direcciones guardadas<select id="saved-address"><option value="">Ingresar otra dirección</option>${addresses.map((a) => `<option value="${a.id}" data-address="${escape(a.address_text)}" data-lat="${a.latitude}" data-lng="${a.longitude}">${escape(a.label)} — ${escape(a.address_text)}</option>`).join("")}</select></label>` : ""}<label class="field">Zona de entrega<select name="zoneId" id="zone">${state.zones.map((z) => `<option value="${z.id}">${escape(z.name)} · ${money(z.delivery_fee)}</option>`).join("")}</select></label>${field("Dirección y referencia", "address", "", "text", 'required minlength="8" maxlength="250" placeholder="Calle, número y referencia (datos ficticios)"')}<div class="field-grid">${field("Latitud del punto", "latitude", z.center_lat, "number", 'required step="any" min="-90" max="90"')}${field("Longitud del punto", "longitude", z.center_lng, "number", 'required step="any" min="-180" max="180"')}</div><p class="hint">Punto de demostración: centro de la zona seleccionada. Puedes ajustar las coordenadas. El servidor valida que el punto esté dentro de cobertura.</p><label class="check"><input name="saveAddress" type="checkbox">Guardar esta dirección (máximo tres)</label><h2 style="margin-top:30px">Método de pago</h2><label class="field">Elige cómo pagar<select name="paymentMethod"><option value="CASH">Efectivo contraentrega</option><option value="YAPE">Yape a DeliGo · verificación manual</option></select></label><p class="hint warning">Esta demo no recibe dinero. En Yape registrarás una referencia ficticia y administración simulará su conciliación. No se muestran cuentas de cobro reales.</p>${field("Propina para tu repartidor (opcional)", "tip", 0, "number", 'id="tip" min="0" max="100" step="0.10" required')}<label class="check"><input name="confirmed" type="checkbox" required>Confirmo que la dirección y el punto de entrega son correctos.</label><p class="error-text" id="checkout-error"></p></div><aside class="cart-panel"><h2>Resumen del pedido</h2>${state.cart.map((p) => `<div class="money-line"><span>${p.quantity} × ${escape(p.name)}${optionSummary(p)}</span><strong>${money(linePrice(p) * p.quantity)}</strong></div>`).join("")}<div id="checkout-totals">${checkoutTotals(z, 0)}</div><button class="button full" type="submit">Confirmar pedido ↗</button><p class="muted" style="font-size:11px;line-height:1.7;margin-top:15px">El servidor revalida stock, cobertura y precios al confirmar.</p></aside></form>`;
 }
 function checkoutTotals(z, tip) {
-  const sub = state.cart.reduce((n, p) => n + p.price * p.quantity, 0),
+  const sub = state.cart.reduce((n, p) => n + linePrice(p) * p.quantity, 0),
     rain = Number(state.settings.rain_fee);
   return `<div class="money-line"><span>Delivery</span><span>${money(z.delivery_fee)}</span></div>${rain ? `<div class="money-line"><span>Adicional por lluvia</span><span>${money(rain)}</span></div>` : ""}<div class="money-line"><span>Propina</span><span>${money(tip)}</span></div><div class="money-line total"><span>Total</span><span>${money(sub + Number(z.delivery_fee) + rain + Number(tip))}</span></div>`;
 }
@@ -531,7 +538,7 @@ document.addEventListener("click", async (e) => {
     } else if (a === "product-detail") productDetail(id);
     else if (a === "add") addProduct(id);
     else if (a === "plus" || a === "minus") {
-      const p = state.cart.find((p) => p.id === id);
+      const p = state.cart.find((p) => p.cartKey === id);
       p.quantity += a === "plus" ? 1 : -1;
       p.quantity = Math.min(p.quantity, p.stock, 50);
       state.cart = state.cart.filter((p) => p.quantity > 0);
@@ -643,7 +650,15 @@ document.addEventListener("submit", async (e) => {
   const error = f.querySelector(".error-text");
   if (error) error.textContent = "";
   try {
-    if (f.id === "login-form") {
+    if (f.id === "configure-product") {
+      const p=state.products.find(p=>p.id===f.dataset.id), selected=[];
+      for(const group of p.option_groups||[]) {
+        const checked=[...f.querySelectorAll(`[name="group-${group.id}"]:checked`)];
+        if(checked.length<group.min_selected||checked.length>group.max_selected) throw new Error(`Revisa «${group.name}»: elige entre ${group.min_selected} y ${group.max_selected}.`);
+        for(const input of checked) { const option=group.options.find(o=>o.id===input.value); selected.push({...option,quantity:1,group_name:group.name}); }
+      }
+      addProduct(p.id,selected); closeModal();
+    } else if (f.id === "login-form") {
       await token();
       const r = await fetch("/api/auth/login", {
         method: "POST",
@@ -674,7 +689,7 @@ document.addEventListener("submit", async (e) => {
         tip: Number(data.tip),
         expectedTotal: Number(
           (
-            state.cart.reduce((n, p) => n + p.price * p.quantity, 0) +
+            state.cart.reduce((n, p) => n + linePrice(p) * p.quantity, 0) +
             Number(state.zones.find((z) => z.id === data.zoneId).delivery_fee) +
             Number(state.settings.rain_fee) +
             Number(data.tip)
@@ -684,6 +699,7 @@ document.addEventListener("submit", async (e) => {
         items: state.cart.map((p) => ({
           productId: p.id,
           quantity: p.quantity,
+          options: (p.selectedOptions||[]).map(o=>({optionId:o.id,quantity:o.quantity||1})),
         })),
       };
       const order = await api("/orders", { method: "POST", body: payload });

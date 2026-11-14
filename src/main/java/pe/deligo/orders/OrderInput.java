@@ -14,5 +14,9 @@ public record OrderInput(@NotBlank String merchantId,@NotBlank String zoneId,
     @NotNull @DecimalMin("0.01") @Digits(integer=9,fraction=2) BigDecimal expectedTotal,
     @NotBlank @Size(min=8,max=80) String idempotencyKey,
     @NotEmpty @Size(max=50) List<@Valid Item> items) {
-    public record Item(@NotBlank String productId,@Min(1) @Max(50) int quantity) {}
+    public record Item(@NotBlank String productId,@Min(1) @Max(50) int quantity,
+        @Size(max=50) List<@Valid Selection> options) {
+        public Item(String productId,int quantity) { this(productId,quantity,List.of()); }
+    }
+    public record Selection(@NotBlank String optionId,@Min(1) @Max(10) int quantity) {}
 }

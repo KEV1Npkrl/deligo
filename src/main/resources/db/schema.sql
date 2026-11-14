@@ -7,13 +7,40 @@ CREATE TABLE IF NOT EXISTS merchant (
  id VARCHAR(36) PRIMARY KEY, owner_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL,
  category VARCHAR(40) NOT NULL, description VARCHAR(300) NOT NULL, image_key VARCHAR(50) NOT NULL,
  is_open BOOLEAN NOT NULL DEFAULT TRUE, prep_minutes INT NOT NULL DEFAULT 25,
+ source_provider VARCHAR(30), source_external_id VARCHAR(80), source_page_name VARCHAR(120),
+ address VARCHAR(250), latitude DOUBLE, longitude DOUBLE, delivery_base_fee DECIMAL(12,2),
+ logo_url VARCHAR(1000), cover_url VARCHAR(1000), catalog_captured_at TIMESTAMP NULL,
+ UNIQUE (source_provider,source_external_id),
  FOREIGN KEY (owner_id) REFERENCES app_user(id)
+);
+CREATE TABLE IF NOT EXISTS product_category (
+ id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL,
+ description VARCHAR(300) NOT NULL DEFAULT '', display_order INT NOT NULL DEFAULT 0,
+ source_external_id VARCHAR(80), active BOOLEAN NOT NULL DEFAULT TRUE,
+ UNIQUE (merchant_id,source_external_id), FOREIGN KEY (merchant_id) REFERENCES merchant(id)
 );
 CREATE TABLE IF NOT EXISTS product (
  id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL,
  description VARCHAR(300) NOT NULL, price DECIMAL(12,2) NOT NULL, stock INT NOT NULL,
+ category_id VARCHAR(36), original_price DECIMAL(12,2), image_url VARCHAR(1000),
+ thumbnail_url VARCHAR(1000), source_external_id VARCHAR(80), display_order INT NOT NULL DEFAULT 0,
  active BOOLEAN NOT NULL DEFAULT TRUE, FOREIGN KEY (merchant_id) REFERENCES merchant(id),
+ FOREIGN KEY (category_id) REFERENCES product_category(id), UNIQUE (merchant_id,source_external_id),
  CHECK (price > 0), CHECK (stock >= 0)
+);
+CREATE TABLE IF NOT EXISTS product_option_group (
+ id VARCHAR(36) PRIMARY KEY, product_id VARCHAR(36) NOT NULL, name VARCHAR(120) NOT NULL,
+ min_selected INT NOT NULL DEFAULT 0, max_selected INT NOT NULL DEFAULT 1,
+ display_order INT NOT NULL DEFAULT 0, source_external_id VARCHAR(80), active BOOLEAN NOT NULL DEFAULT TRUE,
+ UNIQUE (product_id,source_external_id), FOREIGN KEY (product_id) REFERENCES product(id),
+ CHECK (min_selected >= 0), CHECK (max_selected >= min_selected)
+);
+CREATE TABLE IF NOT EXISTS product_option (
+ id VARCHAR(36) PRIMARY KEY, group_id VARCHAR(36) NOT NULL, name VARCHAR(120) NOT NULL,
+ additional_price DECIMAL(12,2) NOT NULL DEFAULT 0, display_order INT NOT NULL DEFAULT 0,
+ source_external_id VARCHAR(80), active BOOLEAN NOT NULL DEFAULT TRUE,
+ UNIQUE (group_id,source_external_id), FOREIGN KEY (group_id) REFERENCES product_option_group(id),
+ CHECK (additional_price >= 0)
 );
 CREATE TABLE IF NOT EXISTS zone (
  id VARCHAR(36) PRIMARY KEY, name VARCHAR(80) NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -50,6 +77,13 @@ CREATE TABLE IF NOT EXISTS order_item (
  product_name VARCHAR(100) NOT NULL, unit_price DECIMAL(12,2) NOT NULL, quantity INT NOT NULL,
  FOREIGN KEY (order_id) REFERENCES delivery_order(id), FOREIGN KEY (product_id) REFERENCES product(id),
  CHECK (quantity > 0)
+);
+CREATE TABLE IF NOT EXISTS order_item_option (
+ id VARCHAR(36) PRIMARY KEY, order_item_id VARCHAR(36) NOT NULL, option_id VARCHAR(36),
+ group_name VARCHAR(120) NOT NULL, option_name VARCHAR(120) NOT NULL,
+ additional_price DECIMAL(12,2) NOT NULL, quantity INT NOT NULL DEFAULT 1,
+ FOREIGN KEY (order_item_id) REFERENCES order_item(id), FOREIGN KEY (option_id) REFERENCES product_option(id),
+ CHECK (additional_price >= 0), CHECK (quantity > 0)
 );
 CREATE TABLE IF NOT EXISTS order_event (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, actor_id VARCHAR(36),

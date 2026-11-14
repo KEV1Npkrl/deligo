@@ -5,9 +5,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.core.annotation.Order;
 import pe.deligo.shared.Store;
 
 @Component
+@Order(0)
 public class DemoData implements CommandLineRunner {
     private final Store db; private final PasswordEncoder encoder; private final boolean demo; private final String password;
     public DemoData(Store db, PasswordEncoder encoder, @Value("${deligo.demo}") boolean demo,

@@ -28,7 +28,9 @@ public class OrderService {
     public Map<String,Object> detail(Map<String,Object> u,String id) {
         var o=db.one("SELECT o.*,m.name merchant_name,m.owner_id FROM delivery_order o JOIN merchant m ON o.merchant_id=m.id WHERE o.id=?",id);
         authorize(u,o);
-        o.put("items",db.list("SELECT product_name,unit_price,quantity FROM order_item WHERE order_id=? ORDER BY product_name",id));
+        var orderItems=db.list("SELECT id,product_name,unit_price,quantity FROM order_item WHERE order_id=? ORDER BY product_name",id);
+        for(var item:orderItems) item.put("options",db.list("SELECT group_name,option_name,additional_price,quantity FROM order_item_option WHERE order_item_id=? ORDER BY group_name,option_name",item.get("id")));
+        o.put("items",orderItems);
         o.put("events",db.list("SELECT event_type,detail,created_at FROM order_event WHERE order_id=? ORDER BY created_at,id",id));
         o.put("review",db.list("SELECT score,comment_text FROM review WHERE order_id=?",id));
         return o;
@@ -56,15 +58,38 @@ public class OrderService {
         require(yes(zone,"active")&&covers(zone,input.latitude(),input.longitude()),"Aún no llegamos a esa dirección. Cambia el punto de entrega.");
         var quantities=new TreeMap<String,Integer>();
         for(var item:input.items()) quantities.merge(item.productId(),item.quantity(),Integer::sum);
-        var items=new ArrayList<Map<String,Object>>(); var subtotal=BigDecimal.ZERO.setScale(2);
         for(var entry:quantities.entrySet()) {
             require(entry.getValue()<=50,"Máximo 50 unidades de un producto.");
             var p=db.one("SELECT * FROM product WHERE id=? FOR UPDATE",entry.getKey());
             require(input.merchantId().equals(p.get("merchant_id"))&&yes(p,"active"),"El carrito contiene un producto no disponible o de otro comercio.");
             require(((Number)p.get("stock")).intValue()>=entry.getValue(),"Stock insuficiente: "+p.get("name"));
             db.update("UPDATE product SET stock=stock-? WHERE id=?",entry.getValue(),entry.getKey());
-            p.put("quantity",entry.getValue()); items.add(p);
-            subtotal=subtotal.add(money(p,"price").multiply(BigDecimal.valueOf(entry.getValue())));
+        }
+        var items=new ArrayList<PreparedItem>(); var subtotal=BigDecimal.ZERO.setScale(2);
+        for(var requested:input.items()) {
+            var p=db.one("SELECT * FROM product WHERE id=?",requested.productId());
+            var selected=new LinkedHashMap<String,Integer>();
+            for(var option:requested.options()==null?List.<OrderInput.Selection>of():requested.options()) {
+                require(selected.putIfAbsent(option.optionId(),option.quantity())==null,"No repitas una opción en el mismo producto.");
+            }
+            var choices=new ArrayList<PreparedOption>(); BigDecimal additions=BigDecimal.ZERO.setScale(2);
+            for(var group:db.list("SELECT * FROM product_option_group WHERE product_id=? AND active=TRUE ORDER BY display_order,id",requested.productId())) {
+                int count=0;
+                for(var option:db.list("SELECT * FROM product_option WHERE group_id=? AND active=TRUE ORDER BY display_order,id",group.get("id"))) {
+                    Integer amount=selected.remove(option.get("id").toString());
+                    if(amount!=null) {
+                        count+=amount; BigDecimal extra=money(option,"additional_price");
+                        additions=additions.add(extra.multiply(BigDecimal.valueOf(amount)));
+                        choices.add(new PreparedOption(option.get("id").toString(),str(group,"name"),str(option,"name"),extra,amount));
+                    }
+                }
+                int min=((Number)group.get("min_selected")).intValue(),max=((Number)group.get("max_selected")).intValue();
+                require(count>=min&&count<=max,"Selecciona entre "+min+" y "+max+" opciones en «"+group.get("name")+"».");
+            }
+            require(selected.isEmpty(),"El pedido contiene una opción inválida o de otro producto.");
+            BigDecimal unit=money(p,"price").add(additions);
+            items.add(new PreparedItem(p,requested.quantity(),unit,choices));
+            subtotal=subtotal.add(unit.multiply(BigDecimal.valueOf(requested.quantity())));
         }
         var rain=money(db.one("SELECT rain_fee FROM platform_setting WHERE id=1"),"rain_fee");
         var quote=Pricing.calculate(subtotal,money(zone,"delivery_fee"),rain,input.tip());
@@ -72,10 +97,16 @@ public class OrderService {
         String id=id();
         db.update("INSERT INTO delivery_order(id,customer_id,merchant_id,zone_id,address_text,latitude,longitude,order_status,payment_method,payment_status,subtotal,delivery_fee,rain_fee,tip,platform_share,courier_share,total,idempotency_key,request_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             id,u.get("id"),input.merchantId(),input.zoneId(),input.address(),input.latitude(),input.longitude(),"PENDING",input.paymentMethod(),"UNPAID",quote.subtotal(),quote.delivery(),quote.rain(),quote.tip(),quote.platformShare(),quote.courierShare(),quote.total(),input.idempotencyKey(),hash);
-        for(var p:items) db.update("INSERT INTO order_item(id,order_id,product_id,product_name,unit_price,quantity) VALUES(?,?,?,?,?,?)",id(),id,p.get("id"),p.get("name"),p.get("price"),p.get("quantity"));
+        for(var item:items) {
+            String itemId=id(); var p=item.product();
+            db.update("INSERT INTO order_item(id,order_id,product_id,product_name,unit_price,quantity) VALUES(?,?,?,?,?,?)",itemId,id,p.get("id"),p.get("name"),item.unitPrice(),item.quantity());
+            for(var option:item.options()) db.update("INSERT INTO order_item_option(id,order_item_id,option_id,group_name,option_name,additional_price,quantity) VALUES(?,?,?,?,?,?,?)",id(),itemId,option.id(),option.groupName(),option.name(),option.price(),option.quantity());
+        }
         event(id,u.get("id"),"PENDING","Pedido recibido. Importes calculados y stock reservado.");
         return detail(u,id);
     }
+    private record PreparedItem(Map<String,Object> product,int quantity,BigDecimal unitPrice,List<PreparedOption> options) {}
+    private record PreparedOption(String id,String groupName,String name,BigDecimal price,int quantity) {}
     public static boolean covers(Map<String,Object> z,double lat,double lng) {
         if(!Double.isFinite(lat)||!Double.isFinite(lng)) return false;
         double a=Math.toRadians(((Number)z.get("center_lat")).doubleValue()),b=Math.toRadians(lat);

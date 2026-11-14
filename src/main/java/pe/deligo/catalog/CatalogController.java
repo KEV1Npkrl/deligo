@@ -17,7 +17,13 @@ public class CatalogController {
         return db.list("SELECT m.*, (SELECT AVG(r.score) FROM review r JOIN delivery_order o ON o.id=r.order_id WHERE o.merchant_id=m.id) rating, (SELECT COUNT(*) FROM review r JOIN delivery_order o ON o.id=r.order_id WHERE o.merchant_id=m.id) review_count FROM merchant m ORDER BY m.name");
     }
     @GetMapping("/api/catalog/products") List<Map<String,Object>> products(@RequestParam String merchantId) {
-        return db.list("SELECT * FROM product WHERE merchant_id=? AND active=TRUE ORDER BY name",merchantId);
+        var products=db.list("SELECT p.*,c.name category_name,c.display_order category_order FROM product p LEFT JOIN product_category c ON c.id=p.category_id WHERE p.merchant_id=? AND p.active=TRUE ORDER BY COALESCE(c.display_order,9999),p.display_order,p.name",merchantId);
+        for(var product:products) {
+            var groups=db.list("SELECT id,name,min_selected,max_selected,display_order FROM product_option_group WHERE product_id=? AND active=TRUE ORDER BY display_order,id",product.get("id"));
+            for(var group:groups) group.put("options",db.list("SELECT id,name,additional_price,display_order FROM product_option WHERE group_id=? AND active=TRUE ORDER BY display_order,id",group.get("id")));
+            product.put("option_groups",groups);
+        }
+        return products;
     }
     @GetMapping("/api/catalog/zones") List<Map<String,Object>> zones() { return db.list("SELECT * FROM zone WHERE active=TRUE ORDER BY name"); }
     @GetMapping("/api/catalog/settings") Map<String,Object> settings() { return db.one("SELECT rain_fee FROM platform_setting WHERE id=1"); }
