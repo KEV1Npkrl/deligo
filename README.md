@@ -112,6 +112,18 @@ mvn test -Dspring.datasource.url=jdbc:mysql://localhost:3306/deligo_test -Dsprin
 
 La suite borra pedidos de esa base entre casos; nunca apuntarla a datos de uso real. Las credenciales del comando son de ejemplo: en CI usar variables/secretos del entorno. Se comprueban conservación de importes, snapshots, idempotencia, concurrencia, stock, cobertura, propiedad, estados, cobros, rendiciones y seguridad HTTP real.
 
+## Capturar un catálogo público de referencia
+
+El proyecto incluye un extractor Java para estudiar catálogos públicos sin iniciar sesión ni consultar pedidos. Por ejemplo, para Bembos Tarapoto:
+
+```sh
+mvn -q -DskipTests exec:java -Dexec.mainClass=pe.deligo.catalog.importer.LlamafoodCatalogScraper -Dexec.args="BembosTarapoto"
+```
+
+Realiza dos consultas: identifica la sucursal por su nombre de página y obtiene su menú de delivery. La instantánea normalizada se guarda en `data/imports/llamafood/`, directorio excluido de Git. Contiene procedencia y fecha, comercio, categorías, productos, precios publicados, disponibilidad, variantes y advertencias de vigencia encontradas en las descripciones.
+
+La captura es una entrada de revisión, no una importación automática a MySQL. Los precios pueden cambiar y la fuente puede conservar textos desactualizados. DeliGo no presenta estos comercios como afiliados propios ni descarga sus imágenes al repositorio. Ver [política y formato de catálogos](docs/CATALOGOS-REFERENCIA.md).
+
 ## Estado del diseño y límites actuales
 
 Referencia solicitada: [Food Delivery App Design — FREE](https://www.figma.com/community/file/1364162990537420776/food-delivery-app-design-free). [Archivo de referencia](https://www.figma.com/design/7cyOJmbNQqn7Nsv7cu3SAy/Food-Delivery-App-Design---FREE--Community-?node-id=212-9000).
@@ -128,5 +140,6 @@ Esta versión no es apta para usuarios reales: faltan, entre otros, límites de 
 - [Backlog y criterios de cierre](docs/BACKLOG.md)
 - [Modelo de datos y API](docs/ARQUITECTURA-API.md)
 - [Verificación de esta versión](docs/VERIFICACION.md)
+- [Catálogos públicos de referencia](docs/CATALOGOS-REFERENCIA.md)
 
 Solo se publica código y documentación propia. Los PDFs originales, datos personales, bases locales y credenciales privadas quedan fuera del repositorio. No se añaden colaboradores ni coautores.
