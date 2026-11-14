@@ -1,3 +1,4 @@
+import { deliveryArt, welcomeArt } from "/assets/figma-ui.js";
 const $ = (s) => document.querySelector(s);
 const escape = (v) =>
   String(v ?? "").replace(
@@ -162,7 +163,8 @@ async function route() {
   $("#view").innerHTML = '<p class="loading">Cargando…</p>';
   try {
     let html;
-    if (hash.startsWith("merchant/")) html = await shopPage(hash.split("/")[1]);
+    if (hash === "cart") html = `<div class="page-title"><h1>Mi bolsa</h1><p>Revisa tus productos antes de continuar.</p></div><div class="cart-page" id="inline-cart">${cartContent()}</div>`;
+    else if (hash.startsWith("merchant/")) html = await shopPage(hash.split("/")[1]);
     else if (hash === "orders") html = await ordersPage();
     else if (hash.startsWith("order/"))
       html = await orderPage(hash.split("/")[1]);
@@ -182,11 +184,28 @@ async function route() {
   }
 }
 function explorePage() {
-  return `<section class="hero"><div><div class="eyebrow"><span class="dot"></span>Lo bueno está cerca</div><h1>Tu barrio.<br>En tu puerta.</h1><p>Comida que te encanta, compras del día y pequeños detalles. Todo de tus comercios locales.</p><a href="#merchants" class="button">Encuentra tu próximo favorito <span>↗</span></a><p class="hero-bottom">TARAPOTO · MORALES · LA BANDA DE SHILCAYO</p></div><div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="orbit two"></div><div class="delivery-bag">deligo↗</div><span class="art-tag one">De tu barrio, con cariño.</span><span class="art-tag two">Cerca de ti. Siempre.</span></div></section>
- <div class="search-row"><label class="searchbox"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Busca un comercio o categoría…" aria-label="Buscar comercios" value="${escape(state.query)}"></label><span>${state.shops.length} comercios para descubrir</span></div>
- <div class="categories" role="group" aria-label="Categorías">${["Todos", ...new Set(state.shops.map((s) => s.category))].map((c) => `<button class="chip ${state.category === c ? "active" : ""}" data-action="category" data-value="${escape(c)}" aria-pressed="${state.category === c}">${escape(c)} <em>${c === "Todos" ? state.shops.length : state.shops.filter((s) => s.category === c).length}</em></button>`).join("")}</div>
- <section id="merchants"><div class="section-head"><div><h2>Descubre cerca de ti</h2><p>Buenos lugares. Nuevos antojos. Tus favoritos de siempre.</p></div><select id="sort" class="sort" aria-label="Ordenar comercios"><option value="name" ${state.sort === "name" ? "selected" : ""}>Recomendados</option><option value="speed" ${state.sort === "speed" ? "selected" : ""}>Más rápidos</option><option value="rating" ${state.sort === "rating" ? "selected" : ""}>Mejor calificados</option></select></div><div class="merchant-grid" id="merchant-grid">${merchantCards()}</div></section>`;
+  const categories=["Todos", ...new Set(state.shops.map(s=>s.category))];
+  return `<div class="welcome-heading"><div><p class="eyebrow">DELIVERY LOCAL · TARAPOTO</p><h1>¿Qué se te antoja hoy?</h1><p>Encuentra tus favoritos, cerca de ti.</p></div><a class="text-link" href="#orders">Ver mis pedidos →</a></div>
+  <div class="search-row"><label class="searchbox"><img src="/assets/figma/234-4849-imgSearchMagnifier.svg" alt=""><input id="search" type="search" placeholder="Busca un comercio o categoría" aria-label="Buscar comercios" value="${escape(state.query)}"></label><span>${state.shops.length} comercios locales</span></div>
+  <section class="category-section"><h2>Explora por categoría</h2><div class="categories" role="group" aria-label="Categorías">${categories.map(c=>`<button class="category-tile ${state.category===c?'active':''}" data-action="category" data-value="${escape(c)}" aria-pressed="${state.category===c}"><span class="category-picture">${categoryArt(c)}</span><span>${escape(c)}</span></button>`).join('')}</div></section>
+  <section class="delivery-banner"><div><h2>Tu barrio,<br>en tu puerta.</h2><p>Compra local. Nosotros lo acercamos.</p><a href="#merchants" class="button">Explorar comercios</a></div><div class="delivery-illustration">${deliveryArt}</div></section>
+  <section id="merchants"><div class="section-head"><div><h2>Comercios cerca de ti</h2><p>Restaurantes y mucho más, en un solo lugar.</p></div><select id="sort" class="sort" aria-label="Ordenar comercios"><option value="name" ${state.sort==='name'?'selected':''}>Por nombre</option><option value="speed" ${state.sort==='speed'?'selected':''}>Más rápidos</option><option value="rating" ${state.sort==='rating'?'selected':''}>Mejor calificados</option></select></div><div class="merchant-grid" id="merchant-grid">${merchantCards()}</div></section>`;
 }
+function categoryArt(c) {
+ const photos={Restaurantes:'246-4844-imgDeliciousFriedChickenWithFrenchFries51.png'};
+ const symbols={Todos:'◎', 'Cuidado personal':'✚', Flores:'✿', Minimarket:'▦', Panadería:'◒'};
+ return photos[c]?`<img src="/assets/figma/${photos[c]}" alt="" loading="lazy">`:`<span class="category-symbol" aria-hidden="true">${symbols[c]||'◎'}</span>`;
+}
+function productArt(p) {
+ const photo = ['classic','double'].includes(p.id) ? '203-4234-imgBurger.png' : null;
+ return photo ? `<img class="product-photo" src="/assets/figma/${photo}" alt="Imagen referencial de hamburguesa" loading="lazy">` : `<span class="product-placeholder" aria-hidden="true">${escape(p.name.split(' ').slice(0,2).map(w=>w[0]).join(''))}</span>`;
+}
+function productDetail(id) {
+ const p=state.products.find(p=>p.id===id); if(!p)return;
+ const shop=state.shops.find(s=>s.id===p.merchant_id);
+ modal(p.name,`<div class="product-detail-art">${productArt(p)}</div><p class="detail-description">${escape(p.description)}</p><div class="detail-meta"><span>${escape(shop.name)}</span><span>${shop.prep_minutes} min preparación</span></div><div class="detail-purchase"><strong>${money(p.price)}</strong><button class="button" data-action="add" data-id="${p.id}" ${!shop.is_open||!p.stock?'disabled':''}>Agregar a mi bolsa</button></div><p class="muted">${p.stock} unidades disponibles.</p>`);
+}
+
 function merchantCards() {
   let shops = state.shops.filter(
     (s) =>
@@ -206,7 +225,7 @@ function merchantCards() {
     ? shops
         .map(
           (s) =>
-            `<a class="merchant-card" href="#merchant/${s.id}">${art(s)}<div class="card-body"><h3>${escape(s.name)}</h3><p>${escape(s.description)}</p><div class="card-meta"><span>◷ ${s.prep_minutes} min preparación</span><strong>${s.rating ? "★ " + Number(s.rating).toFixed(1) + "/4" : "Nuevo en DeliGo"}</strong></div></div></a>`,
+            `<a class="merchant-card" href="#merchant/${s.id}">${s.id === "burger" ? '<div class="shop-photo"><img src="/assets/figma/136-2305-imgFrame91.png" alt="Hamburguesa referencial del comercio" loading="lazy"></div>' : art(s)}<div class="card-body"><h3>${escape(s.name)}</h3><p>${escape(s.description)}</p><div class="card-meta"><span>◷ ${s.prep_minutes} min preparación</span><strong>${s.rating ? "★ " + Number(s.rating).toFixed(1) + "/4" : "Nuevo en DeliGo"}</strong></div></div></a>`,
         )
         .join("")
     : empty(
@@ -220,11 +239,11 @@ async function shopPage(id) {
   state.products = await api(
     "/catalog/products?merchantId=" + encodeURIComponent(id),
   );
-  return `<a href="#explore" class="back">← Todos los comercios</a><section class="shop-header">${art(shop)}<div><div class="eyebrow">${escape(shop.category)}</div><h1>${escape(shop.name)}</h1><p>${escape(shop.description)}<br>Preparación estimada: ${shop.prep_minutes} minutos · Delivery desde ${money(5)}</p></div></section><div class="catalog-layout"><section><div class="section-head"><h2>Elige lo que te gusta</h2><span class="muted">${state.products.length} productos</span></div><div class="product-list">${state.products.map((p) => `<article class="product"><div><h3>${escape(p.name)}</h3><p>${escape(p.description)}</p><span class="price">${money(p.price)}</span> <small>· ${p.stock} disponibles</small></div><button class="add" data-action="add" data-id="${p.id}" aria-label="Agregar ${escape(p.name)}" ${!shop.is_open || !p.stock ? "disabled" : ""}>+</button></article>`).join("") || empty("Catálogo en preparación", "Este comercio aún no tiene productos disponibles.")}</div></section><aside class="cart-panel" id="inline-cart">${cartContent()}</aside></div>`;
+  return `<a href="#explore" class="back">← Todos los comercios</a><section class="shop-header">${art(shop)}<div><div class="eyebrow">${escape(shop.category)}</div><h1>${escape(shop.name)}</h1><p>${escape(shop.description)}<br>Preparación estimada: ${shop.prep_minutes} minutos · Delivery desde ${money(5)}</p></div></section><div class="catalog-layout"><section><div class="section-head"><h2>Elige lo que te gusta</h2><span class="muted">${state.products.length} productos</span></div><div class="product-list">${state.products.map((p) => `<article class="product"><button class="product-visual" data-action="product-detail" data-id="${p.id}" aria-label="Ver ${escape(p.name)}">${productArt(p)}</button><div><h3><button class="product-title" data-action="product-detail" data-id="${p.id}">${escape(p.name)}</button></h3><p>${escape(p.description)}</p><span class="price">${money(p.price)}</span> <small>· ${p.stock} disponibles</small></div><button class="add" data-action="add" data-id="${p.id}" aria-label="Agregar ${escape(p.name)}" ${!shop.is_open || !p.stock ? "disabled" : ""}>+</button></article>`).join("") || empty("Catálogo en preparación", "Este comercio aún no tiene productos disponibles.")}</div></section><aside class="cart-panel" id="inline-cart">${cartContent()}</aside></div>`;
 }
 function cartContent() {
   let subtotal = state.cart.reduce((s, p) => s + p.price * p.quantity, 0);
-  return `<h2>Tu bolsa <span class="muted">(${state.cart.reduce((s, p) => s + p.quantity, 0)})</span></h2>${state.cart.length ? `<p class="muted" style="font-size:12px">${escape(state.shops.find((s) => s.id === state.cartShop)?.name)}</p>${state.cart.map((p) => `<div class="cart-item"><div><strong>${escape(p.name)}</strong><span>${money(p.price * p.quantity)}</span></div><span class="qty"><button data-action="minus" data-id="${p.id}" aria-label="Quitar una unidad de ${escape(p.name)}">−</button>${p.quantity}<button data-action="plus" data-id="${p.id}" aria-label="Agregar una unidad de ${escape(p.name)}">+</button></span></div>`).join("")}<div class="money-line total"><span>Productos</span><span>${money(subtotal)}</span></div><p class="muted" style="font-size:11px;line-height:1.7">El delivery y cualquier adicional se muestran antes de confirmar.</p><button class="button full" data-action="checkout">Continuar ↗</button><button class="link-button" data-action="clear-cart">Vaciar bolsa</button>` : '<p class="muted" style="font-size:13px;line-height:1.8;padding:20px 0">Tu próximo favorito te espera.<br>Agrega un producto para empezar.</p>'}`;
+  return `<h2>Tu bolsa <span class="muted">(${state.cart.reduce((s, p) => s + p.quantity, 0)})</span></h2>${state.cart.length ? `<p class="muted" style="font-size:12px">${escape(state.shops.find((s) => s.id === state.cartShop)?.name)}</p>${state.cart.map((p) => `<div class="cart-item"><div class="cart-product-art">${productArt(p)}</div><div><strong>${escape(p.name)}</strong><span>${money(p.price * p.quantity)}</span></div><span class="qty"><button data-action="minus" data-id="${p.id}" aria-label="Quitar una unidad de ${escape(p.name)}">−</button>${p.quantity}<button data-action="plus" data-id="${p.id}" aria-label="Agregar una unidad de ${escape(p.name)}">+</button></span></div>`).join("")}<div class="money-line total"><span>Productos</span><span>${money(subtotal)}</span></div><p class="muted" style="font-size:11px;line-height:1.7">El delivery y cualquier adicional se muestran antes de confirmar.</p><button class="button full" data-action="checkout">Continuar ↗</button><button class="link-button" data-action="clear-cart">Vaciar bolsa</button>` : '<p class="muted" style="font-size:13px;line-height:1.8;padding:20px 0">Tu próximo favorito te espera.<br>Agrega un producto para empezar.</p>'}`;
 }
 function updateCart() {
   state.submitKey = crypto.randomUUID();
@@ -275,7 +294,8 @@ async function ordersPage() {
   if (!state.user)
     return `<div class="page-title"><h1>Tus pedidos, en un lugar.</h1><p>Ingresa para ver el estado de tus compras.</p><button class="button" data-action="login">Ingresar</button></div>`;
   const orders = await api("/orders");
-  return `<div class="page-title"><div class="eyebrow">${roles[state.user.user_role]}</div><h1>${state.user.user_role === "CUSTOMER" ? "Tus pedidos. Sin perder el hilo." : "Pedidos de tu operación."}</h1><p>Estados registrados por los responsables. Actualiza para consultar cambios.</p><button class="button secondary small" data-action="refresh">Actualizar ↻</button></div><div class="order-grid">${orders.map(orderCard).join("") || empty("Todavía no hay pedidos", "Aquí aparecerán tus pedidos cuando los confirmes.")}</div>`;
+  state.visibleOrders = orders;
+  return `<div class="page-title"><div class="eyebrow">${roles[state.user.user_role]}</div><h1>${state.user.user_role === "CUSTOMER" ? "Tus pedidos. Sin perder el hilo." : "Pedidos de tu operación."}</h1><p>Estados registrados por los responsables. Actualiza para consultar cambios.</p><button class="button secondary small" data-action="refresh">Actualizar ↻</button></div><label class="searchbox order-search"><img src="/assets/figma/150-4866-imgSearchMagnifier.svg" alt=""><input id="order-search" type="search" aria-label="Buscar en mis pedidos" placeholder="Busca por comercio, número o estado"></label><div class="order-grid" id="order-results">${orders.map(orderCard).join("") || empty("Todavía no hay pedidos", "Aquí aparecerán tus pedidos cuando los confirmes.")}</div>`;
 }
 function actionButton(action, label, style = "") {
   return `<button class="button small ${style}" data-action="order-action" data-value="${action}">${label}</button>`;
@@ -394,13 +414,13 @@ async function adminWorkspace() {
 }
 function loginModal() {
   modal(
-    "Qué bueno verte por aquí.",
-    `<p>Ingresa para pedir, atender tu comercio o gestionar entregas.</p><form id="login-form">${field("Correo electrónico", "username", "", "email", 'required autocomplete="username"')}${field("Contraseña", "password", "", "password", 'required autocomplete="current-password"')}<p id="login-error" class="error-text"></p><button class="button full" type="submit">Ingresar ↗</button></form>${state.demo ? '<p class="hint" style="margin-top:20px">Cuentas públicas de demostración. Los botones completan sus credenciales de ejemplo; no uses información real.</p><div class="demo-roles"><button data-action="demo-login" data-value="customer">Cliente</button><button data-action="demo-login" data-value="merchant">Comercio</button><button data-action="demo-login" data-value="courier">Repartidor</button><button data-action="demo-login" data-value="admin">Administración</button></div>' : ""}<button class="link-button" data-action="register">Crear cuenta de cliente</button>`,
+    "Bienvenido a DeliGo",
+    `<div class="welcome-art">${welcomeArt}</div><p>Lo mejor de tu barrio, en tu puerta.</p><form id="login-form">${field("Correo electrónico", "username", "", "email", 'required autocomplete="username"')}${field("Contraseña", "password", "", "password", 'required autocomplete="current-password"')}<p id="login-error" class="error-text"></p><button class="button full" type="submit">Ingresar ↗</button></form>${state.demo ? '<p class="hint" style="margin-top:20px">Cuentas públicas de demostración. Los botones completan sus credenciales de ejemplo; no uses información real.</p><div class="demo-roles"><button data-action="demo-login" data-value="customer">Cliente</button><button data-action="demo-login" data-value="merchant">Comercio</button><button data-action="demo-login" data-value="courier">Repartidor</button><button data-action="demo-login" data-value="admin">Administración</button></div>' : ""}<button class="link-button" data-action="register">Crear cuenta de cliente</button>`,
   );
 }
 function registerModal() {
   modal(
-    "Tu barrio te espera.",
+    "Crea tu cuenta",
     `<p>Crea una cuenta de cliente para esta demostración.</p><form id="register-form">${field("Tu nombre", "name", "", "text", 'required maxlength="100" autocomplete="name"')}${field("Correo", "email", "", "email", 'required maxlength="160" autocomplete="email"')}${field("Contraseña (12 caracteres como mínimo)", "password", "", "password", 'required minlength="12" maxlength="64" autocomplete="new-password"')}<p class="error-text" id="register-error"></p><button class="button full">Crear mi cuenta</button></form>`,
   );
 }
@@ -467,6 +487,11 @@ document.addEventListener("input", (e) => {
     state.query = e.target.value;
     $("#merchant-grid").innerHTML = merchantCards();
   }
+  if (e.target.id === "order-search") {
+    const query=e.target.value.toLocaleLowerCase("es").trim();
+    const matches=(state.visibleOrders||[]).filter(o=>[o.id,o.merchant_name,states[o.order_status]].join(" ").toLocaleLowerCase("es").includes(query));
+    $("#order-results").innerHTML=matches.map(orderCard).join("")||empty("No encontramos ese pedido","Prueba con otro comercio, número o estado.");
+  }
   if (e.target.id === "tip") updateCheckout();
 });
 function updateCheckout() {
@@ -503,7 +528,8 @@ document.addEventListener("click", async (e) => {
     if (a === "category") {
       state.category = v;
       $("#view").innerHTML = explorePage();
-    } else if (a === "add") addProduct(id);
+    } else if (a === "product-detail") productDetail(id);
+    else if (a === "add") addProduct(id);
     else if (a === "plus" || a === "minus") {
       const p = state.cart.find((p) => p.id === id);
       p.quantity += a === "plus" ? 1 : -1;
@@ -742,7 +768,7 @@ $("#account-button").addEventListener("click", () => {
   );
 });
 $("#cart-button").addEventListener("click", () =>
-  modal("Tu pedido", `<div data-cart-modal>${cartContent()}</div>`),
+  (location.hash = "cart"),
 );
 window.addEventListener("hashchange", () => {
   if (location.hash === "#merchants") {

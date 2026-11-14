@@ -1,0 +1,15 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="29.0505" height="4.50455" viewBox="0 0 29.0505 4.50455" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="Group">
+<path id="Vector" d="M28.896 0.154122H0.154037V4.35043H28.896V0.154122Z" fill="#FC4D4D"/>
+<g id="Vector_2">
+<use xlink:href="#stroke0_0_58" fill="#040404"/>
+<mask id="stroke1_0_58" fill="white">
+<use xlink:href="#stroke0_0_58"/>
+</mask>
+<path d="M28.903 4.50455H0.154038C0.0700172 4.50455 0 4.4345 0 4.35043V0.154122C0 0.070056 0.0700172 0 0.154038 0H28.896C28.98 0 29.05 0.070056 29.05 0.154122V4.35043C29.057 4.4345 28.987 4.50455 28.903 4.50455ZM0.308075 4.19631H28.7419V0.308244H0.308075V4.19631Z" stroke-width="2" stroke="#040404" mask="url(#stroke1_0_58)"/>
+</g>
+</g>
+<defs>
+<path id="stroke0_0_58" d="M28.903 4.50455H0.154038C0.0700172 4.50455 0 4.4345 0 4.35043V0.154122C0 0.070056 0.0700172 0 0.154038 0H28.896C28.98 0 29.05 0.070056 29.05 0.154122V4.35043C29.057 4.4345 28.987 4.50455 28.903 4.50455ZM0.308075 4.19631H28.7419V0.308244H0.308075V4.19631Z"/>
+</defs>
+</svg>

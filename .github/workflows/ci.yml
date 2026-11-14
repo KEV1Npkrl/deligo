@@ -35,4 +35,7 @@ jobs:
           -Dspring.datasource.username=deligo_test
           -Dspring.datasource.password=ephemeral-test-password
       - name: Check frontend syntax
-        run: node --check src/main/resources/static/app.js
+        run: |
+          node --check src/main/resources/static/app.js
+          node --check src/main/resources/static/assets/figma-ui.js
+          node --test src/test/frontend/flows.cjs
